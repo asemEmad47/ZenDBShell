@@ -21,6 +21,7 @@ if [ -n "$DbName" ]; then
         zenity --info \
             --text="You are now successfully connected to the database: $DbName." \
             --width=500
+	source "$HOME/DBMS/DbMenu/DbMainMenu" $DbName
     else
         zenity --warning \
             --text="Database '$DbName' does not exist in $HOME/.DataBases." \
