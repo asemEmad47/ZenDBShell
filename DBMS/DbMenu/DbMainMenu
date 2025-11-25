@@ -1,0 +1,41 @@
+#!/usr/bin/bash
+
+DbName="$1"
+
+while true
+do
+    DbMenuChoice=$(zenity --list \
+        --title="Database Menu" \
+        --radiolist \
+        --width=600 --height=400 \
+        --column="Select" --column="Database option" \
+        TRUE  "Create Table" \
+        FALSE "List Table" \
+        FALSE "Drop Table" \
+        FALSE "Insert into table" \
+        FALSE "Select from table" \
+        FALSE "Delete from table" \
+        FALSE "Update table"
+    )
+
+    if [ $? -ne 0 ]; then
+        break
+    fi
+
+    if [ "$DbMenuChoice" == "Create Table" ]; then
+        "$HOME/DBMS/DbMenu/CreateTable.sh" "$DbName"
+    elif [ "$DbMenuChoice" == "List Table" ]; then
+        "$HOME/DBMS/DbMenu/ListTables.sh" "$DbName"
+    elif [ "$DbMenuChoice" == "Drop Table" ]; then
+        "$HOME/DBMS/DbMenu/DropTable.sh" "$DbName"
+    elif [ "$DbMenuChoice" == "Insert into table" ]; then
+        "$HOME/DBMS/DbMenu/InsertIntoTable.sh" "$DbName"
+    elif [ "$DbMenuChoice" == "Select from table" ]; then
+        "$HOME/DBMS/DbMenu/SelectFromTable.sh" "$DbName"
+    elif [ "$DbMenuChoice" == "Delete from table" ]; then
+        "$HOME/DBMS/DbMenu/DeleteFromTable.sh" "$DbName"
+    elif [ "$DbMenuChoice" == "Update table" ]; then
+        "$HOME/DBMS/DbMenu/UpdateTable.sh" "$DbName"
+    fi
+done
+
