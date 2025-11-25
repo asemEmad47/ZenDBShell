@@ -1,0 +1,15 @@
+#!/usr/bin/bash
+
+MetaFile="$1"
+ColName="$2"
+
+if [ ! -f "$MetaFile" ]; then
+    exit 1
+fi
+
+if grep -q "^$ColName:" "$MetaFile"; then
+    exit 0
+else
+    exit 1
+fi
+
