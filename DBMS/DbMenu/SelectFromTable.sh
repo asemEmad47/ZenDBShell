@@ -10,6 +10,8 @@ if [ -z "$TableName" ]; then exit 1; fi
 TableFile="$HOME/.DataBases/$DBName/$TableName"
 MetaFile="$HOME/.DataBases/$DBName/.$TableName-meta"
 
+while true
+do
 Choice=$(zenity --list --title="Select Options" --column="Option" "Select All" "Select by Primary Key" "Filter by Column")
 
 if [ -z "$Choice" ]; then exit 1; fi
@@ -74,3 +76,4 @@ elif [ "$Choice" == "Filter by Column" ]; then
     fi
     rm -f .search_res
 fi
+done
