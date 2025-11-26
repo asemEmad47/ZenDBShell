@@ -1,0 +1,24 @@
+#!/bin/bash
+
+DBName="$1"
+TableName="$2"
+TargetColName="$3"
+
+MetaFile="$HOME/.DataBases/$DBName/.$TableName-meta"
+
+cat "$MetaFile" | while read line
+do
+    ColName=$(echo $line | cut -d: -f1)
+    IsNullable=$(echo $line | cut -d: -f3)
+
+    if [ "$ColName" == "$TargetColName" ]; then
+        if ! [[ "$IsNullable" == "notNull" ]]; then
+	    exit 0
+        fi
+	exit 1
+    fi
+
+    continue
+
+done
+
