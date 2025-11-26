@@ -12,7 +12,7 @@ MetaFile="$HOME/.DataBases/$DBName/.$TableName-meta"
 
 while true
 do
-Choice=$(zenity --list --title="Select Options" --column="Option" "Select All" "Select by Primary Key" "Filter by Column")
+Choice=$(zenity --list --title="Select Options" --column="Option" "Select All" "Select by Primary Key" "Filter by Column" "Select column" )
 
 if [ -z "$Choice" ]; then exit 1; fi
 
@@ -75,5 +75,29 @@ elif [ "$Choice" == "Filter by Column" ]; then
         zenity --info --text="No records found matching criteria."
     fi
     rm -f .search_res
+
+elif [ "$Choice" == "Select column" ]; then
+    ColNames=$(cut -d: -f1 "$MetaFile")
+
+    SelectedCol=$(zenity --list --title="Select Column" --column="Columns" $ColNames)
+
+    if [ -z "$SelectedCol" ]; then exit 1; fi
+
+    FieldNum=1
+    while read line
+    do
+        ColName=$(echo "$line" | cut -d: -f1)
+        if [ "$ColName" == "$SelectedCol" ]; then
+            break
+        fi
+        FieldNum=$((FieldNum+1))
+    done < "$MetaFile"
+
+    cut -d, -f$FieldNum "$TableFile" >> .search_res
+
+    zenity --text-info --title="Column Values" --width=400 --height=400 --filename=.search_res
+
+    rm -f .search_res
+
 fi
 done
