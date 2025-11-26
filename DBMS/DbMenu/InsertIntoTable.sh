@@ -11,6 +11,7 @@ fi
 
 TableFile="$HOME/.DataBases/$DBName/$TableName"
 MetaFile="$HOME/.DataBases/$DBName/.$TableName-meta"
+CheckerPath="$HOME/DBMS/ConstraintsCheckers/NullabilityColumnConstraintChecker"
 
 Row=""
 Separator=""
@@ -19,16 +20,27 @@ cat "$MetaFile" | while read line
 do
     ColName=$(echo $line | cut -d: -f1)
     ColType=$(echo $line | cut -d: -f2)
-    IsPK=$(echo $line | cut -d: -f3)
+    IsNullable=$(echo $line | cut -d: -f3)
+    IsPK=$(echo $line | cut -d: -f4)
 
     while true
     do
         Value=$(zenity --entry --title="Insert Data" --text="Enter value for column ($ColName) [$ColType]:")
         
         if [ $? -ne 0 ]; then
-            exit 1
+	    rm .temp_row
+	    exit 0
         fi
 
+
+        if [ -z "$Value" ]; then
+            if [ "$IsNullable" == "notNull" ]; then
+                zenity --error --text="Invalid Input! ($ColName) is not nullable."
+                continue
+            fi
+
+	    break
+        fi
         
         if [ "$ColType" == "Integer" ]; then
             if ! [[ "$Value" =~ ^[0-9]+$ ]]; then
