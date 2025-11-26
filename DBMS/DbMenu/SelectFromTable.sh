@@ -15,7 +15,7 @@ Choice=$(zenity --list --title="Select Options" --column="Option" "Select All" "
 if [ -z "$Choice" ]; then exit 1; fi
 
 if [ "$Choice" == "Select All" ]; then
-    column -t -s ',' "$TableFile" | zenity --text-info --title="Table: $TableName" --width=600 --height=400
+    column -t  "$TableFile" | zenity --text-info --title="Table: $TableName" --width=600 --height=400
 
 elif [ "$Choice" == "Select by Primary Key" ]; then
     PK=$(zenity --entry --title="Search" --text="Enter Primary Key value:")
@@ -26,7 +26,7 @@ elif [ "$Choice" == "Select by Primary Key" ]; then
     if [ -z "$Result" ]; then
         zenity --error --text="Record not found!"
     else
-        echo "$Result" | column -t -s ',' | zenity --text-info --title="Result" --width=600 --height=200
+        echo "$Result" | column -t  | zenity --text-info --title="Result" --width=600 --height=200
     fi
 
 elif [ "$Choice" == "Filter by Column" ]; then
@@ -68,7 +68,7 @@ elif [ "$Choice" == "Filter by Column" ]; then
     fi
 
     if [ -s .search_res ]; then
-        column -t -s ',' .search_res | zenity --text-info --title="Filter Results" --width=600 --height=400
+        column -t .search_res | zenity --text-info --title="Filter Results" --width=600 --height=400
     else
         zenity --info --text="No records found matching criteria."
     fi
