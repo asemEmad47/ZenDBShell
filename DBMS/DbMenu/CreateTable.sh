@@ -10,7 +10,7 @@ IsPKChose=false
 DBPath="$HOME/.DataBases/$DBName"
 TableFile="$DBPath/$TableName"
 MetaFile="$DBPath/.$TableName-meta"
-
+CheckerPath="$HOME/DBMS/ConstraintsCheckers/ColumnExistenceChecker"
 
 while [ -n "$TableName" ] && [ -f "$TableFile" ]; do
     zenity --warning --title="Warning" --text="Table '$TableName' already exists!" --width=400
@@ -46,6 +46,11 @@ do
 	break
     fi
 
+    if "$CheckerPath" "$MetaFile" "$ColName"; then
+        zenity --warning --title="Warning" --text="Column '$ColName' already exists!" --width=400
+        continue
+    fi
+
     ColDataType=$(zenity --list \
         --title="Data Types Menu" \
         --radiolist \
@@ -55,6 +60,7 @@ do
         FALSE "Float" \
         FALSE "String"
     )
+
 
     if [ "$IsPKChose" != "true" ]; then
         PK=$(zenity --list \
@@ -77,23 +83,31 @@ do
 	    break
         fi
 
-        CheckerPath="$HOME/DBMS/ConstraintsCheckers/ColumnExistenceChecker"
-        if "$CheckerPath" "$MetaFile" "$ColName"; then
-            zenity --warning --title="Warning" --text="Column '$ColName' already exists!" --width=400
-        else
-            if [ "$PK" == "Yes" ]; then
-                IsPKChose=true
-		echo "$ColName:$ColDataType:PK" >> "$MetaFile"
-	    else
-		echo "$ColName:$ColDataType" >> "$MetaFile"
-            fi
+        if [ "$PK" == "Yes" ]; then
+            IsPKChose=true
+            echo "$ColName:$ColDataType:notNull:PK" >> "$MetaFile"
+	else
+	    echo "$ColName:$ColDataType" >> "$MetaFile"
         fi
 	
-	echo -n "$ColName," >> "$TableFile"
     else
-        echo -n "$ColName," >> "$TableFile"
-        echo "$ColName:$ColDataType" >> "$MetaFile"
+	Nullability=$(zenity --list \
+    	--title="Nullability" \
+    	--radiolist \
+    	--width=400 --height=300 \
+    	--column="Select" --column="Nullability" \
+    	TRUE "Allow NULL" \
+    	FALSE "NOT NULL"
+	)
+
+	if [ "$Nullability" == "NOT NULL" ]; then
+    	    echo "$ColName:$ColDataType:notNull" >> "$MetaFile"
+	else
+            echo "$ColName:$ColDataType:null" >> "$MetaFile"
+        fi
+
     fi
 
+    echo -n "$ColName," >> "$TableFile"
 done
 
