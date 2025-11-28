@@ -9,95 +9,61 @@ if [ -z "$TableName" ]; then exit 1; fi
 
 TableFile="$HOME/.DataBases/$DBName/$TableName"
 MetaFile="$HOME/.DataBases/$DBName/.$TableName-meta"
-
+FilterScriptPath="$HOME/DBMS/DbMenu/FilterCols.sh"
 while true
 do
-Choice=$(zenity --list --title="Select Options" --column="Option" "Select All" "Select by Primary Key" "Filter by Column" "Select column" )
+Choice=$(zenity --list --title="Select Options" --column="Option" "Select All" "Select columns" )
 
 if [ -z "$Choice" ]; then exit 1; fi
 
 if [ "$Choice" == "Select All" ]; then
-    column -t  "$TableFile" | zenity --text-info --title="Table: $TableName" --width=600 --height=400
 
-elif [ "$Choice" == "Select by Primary Key" ]; then
-    PK=$(zenity --entry --title="Search" --text="Enter Primary Key value:")
-    if [ -z "$PK" ]; then exit 1; fi
-    
-    Result=$(grep "^$PK," "$TableFile")
-    
-    if [ -z "$Result" ]; then
-        zenity --error --text="Record not found!"
+    "$FilterScriptPath" "$MetaFile" "$TableFile"
+    if [ $? -eq 0 ]; then
+        column -t .search_res | zenity --text-info --title="Filtered Table: $TableName" --width=600 --height=400
     else
-        echo "$Result" | column -t  | zenity --text-info --title="Result" --width=600 --height=200
+        column -t "$TableFile" | zenity --text-info --title="Table: $TableName" --width=600 --height=400
     fi
 
-elif [ "$Choice" == "Filter by Column" ]; then
-    
-    ColNames=$(cut -d: -f1 "$MetaFile")
-    SelectedCol=$(zenity --list --title="Select Column" --column="Columns" $ColNames --text="Filter by which column?")
-    
-    if [ -z "$SelectedCol" ]; then exit 1; fi
+elif [ "$Choice" == "Select columns" ]; then
 
-    FieldNum=1
-    ColType=""
-    while read line
-    do
-        currName=$(echo $line | cut -d: -f1)
-        if [ "$currName" == "$SelectedCol" ]; then
-            ColType=$(echo $line | cut -d: -f2)
-            break
-        fi
-        ((FieldNum++))
-    done < "$MetaFile"
-
-    if [ "$ColType" == "Integer" ] || [ "$ColType" == "Float" ]; then
-        Operator=$(zenity --list --title="Select Operator" --column="Op" --column="Description" "==" "Equals" "!=" "Not Equals" ">" "Greater Than" "<" "Less Than" ">=" "Greater or Equal" "<=" "Less or Equal")
-            
-        if [ -z "$Operator" ]; then exit 1; fi
-        
-        Value=$(zenity --entry --title="Filter Value" --text="Enter the number to compare:")
-        
-        if [ -z "$Value" ]; then exit 1; fi
-        
-        awk -F, "\$$FieldNum $Operator $Value {print \$0}" "$TableFile" > .search_res
-
-    else
-        Pattern=$(zenity --entry --title="String Filter" --text="Enter Regex Pattern: ")
-        
-        if [ -z "$Pattern" ]; then exit 1; fi
-        
-        awk -F, "\$$FieldNum ~ /$Pattern/ {print \$0}" "$TableFile" > .search_res
-    fi
-
-    if [ -s .search_res ]; then
-        column -t .search_res | zenity --text-info --title="Filter Results" --width=600 --height=400
-    else
-        zenity --info --text="No records found matching criteria."
-    fi
-    rm -f .search_res
-
-elif [ "$Choice" == "Select column" ]; then
     ColNames=$(cut -d: -f1 "$MetaFile")
 
-    SelectedCol=$(zenity --list --title="Select Column" --column="Columns" $ColNames)
+    SelectedCols=$(zenity --list \
+	--title="Select Columns" \
+	--text="Which column(s) do you want to display?" \
+	--column="Columns" $ColNames \
+	--multiple --separator="\n")
 
-    if [ -z "$SelectedCol" ]; then exit 1; fi
+    if [ -z "$SelectedCols" ]; then
+        exit 1
+    fi
 
-    FieldNum=1
-    while read line
-    do
-        ColName=$(echo "$line" | cut -d: -f1)
-        if [ "$ColName" == "$SelectedCol" ]; then
-            break
-        fi
-        FieldNum=$((FieldNum+1))
-    done < "$MetaFile"
+    "$FilterScriptPath" "$MetaFile" "$TableFile"
+    
+    if [ $? -eq 0 ]; then
+        InputFile=".search_res"
+    else
+	InputFile="$TableFile"
+    fi
 
-    cut -d, -f$FieldNum "$TableFile" >> .search_res
+    Fields=""
+    while read -r col; do
+	FieldNum=1
+	while read line; do
+		ColName=$(echo "$line" | cut -d: -f1)
+		if [ "$ColName" == "$col" ]; then
+			break
+		fi
+		((FieldNum++))
+	done < "$MetaFile"
+	Fields="$Fields$FieldNum,"
+    done <<< "$SelectedCols"
 
-    zenity --text-info --title="Column Values" --width=400 --height=400 --filename=.search_res
+    Fields=${Fields::-1}
 
-    rm -f .search_res
+    cut -d, -f$Fields "$InputFile" | column -t | zenity --text-info --title="Selected Columns" --width=600 --height=400
 
 fi
 done
+rm -f .search_res
