@@ -1,5 +1,10 @@
 #!/usr/bin/bash
 
+DBDirPath="$HOME/.DataBases"
+if [ ! -d "$DBDirPath" ]; then
+  mkdir -p "$DBDirPath"
+fi
+
 while true
 do
     mainMenuChoice=$(zenity --list \
