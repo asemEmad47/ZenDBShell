@@ -10,20 +10,54 @@ if [ -z "$TableName" ]; then
 fi
 
 TableFile="$HOME/.DataBases/$DBName/$TableName"
+MetaFile="$HOME/.DataBases/$DBName/.$TableName-meta"
 
-PK=$(zenity --entry --title="Delete Record" --text="Enter Primary Key of the record to delete:")
+FilterScriptPath="$HOME/DBMS/DbMenu/FilterCols.sh"
 
-if [ -z "$PK" ]; then
-    exit 1
+"$FilterScriptPath" "$MetaFile" "$TableFile"
+if [ $? -eq 1 ]; then
+    zenity --question --title="Confirm" \
+           --text="Are you sure you want to delete all rows?"
+
+    if [ $? -eq 0 ]; then
+        
+        sed -i '1!d' "$TableFile"
+
+        zenity --info --title="Done" \
+               --text="Table $TableName is truncated successfully."
+
+	exit 0
+
+    else
+	zenity --info --title="Done" \
+             --text="No rows deleted for the Table $TableName"
+
+        exit 0
+    fi
+
 fi
 
-if ! grep -q "^$PK," "$TableFile"; then
-    zenity --error --text="Record with ID ($PK) not found!"
-    exit 1
-fi
+Index=0
 
-grep -v "^$PK," "$TableFile" > "$TableFile.temp"
+while read line; do
+    ((Index++))
+    IsPK=$(echo "$line" | cut -d: -f4)
+    if [ "$IsPK" == "PK" ]; then
+        break
+    fi
+done < "$MetaFile"
 
-mv "$TableFile.temp" "$TableFile"
 
-zenity --info --text="Record Deleted Successfully!"
+echo "index is $Index"
+
+awk -F, -v col="$Index" '{print $col}' .search_res | while read -r PK
+do
+    echo $PK
+    awk -F, -v col="$Index" -v pk="$PK" '$col != pk {print $0}' "$TableFile" > "$TableFile.temp"
+    mv "$TableFile.temp" "$TableFile"
+done
+
+Counter=$(wc -l < .search_res)
+((Counter--))
+rm -rf .search_res
+zenity --info --text="$Counter rows are deleted!"
