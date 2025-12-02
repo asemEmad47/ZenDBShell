@@ -52,7 +52,7 @@ while read -r col; do
 done <<< "$SelectedCols"
 
 AwkFilters=${AwkFilters::-3}
-AwkFilters="$AwkFilters {print \$0}"
+AwkFilters="($AwkFilters) && NF {print \$0}"
 
 awk -F, "$AwkFilters" "$TableFile" > .search_res
 
