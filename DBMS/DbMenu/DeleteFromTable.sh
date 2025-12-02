@@ -58,6 +58,5 @@ do
 done
 
 Counter=$(wc -l < .search_res)
-((Counter--))
 rm -rf .search_res
 zenity --info --text="$Counter rows are deleted!"
