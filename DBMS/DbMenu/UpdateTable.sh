@@ -32,89 +32,96 @@ if [ ! -s .search_res ]; then
 fi
 
 ColNames=$(cut -d: -f1 "$MetaFile")
-ColToEdit=$(zenity --list --title="Select Column" --column="Columns" $ColNames --text="Which column do you want to update?")
+ColsToEdit=$(zenity --list \
+    --title="Select Columns" \
+    --text="Which column(s) do you want to update?" \
+    --column="Columns" $ColNames \
+    --multiple --separator="\n")
 
-if [ -z "$ColToEdit" ]; then 
+if [ -z "$ColsToEdit" ]; then
     rm -f .search_res
-    exit 1 
+    exit 1
 fi
-
-FieldNum=1
-TargetColNum=0
-ColType=""
-IsNullable=""
-IsPKCol=""
-
-TablePKIndex=0
-
-while read line
+while read ColToEdit
 do
-    CurrColName=$(echo $line | cut -d: -f1)
-    CurrIsPK=$(echo $line | cut -d: -f4)
+    FieldNum=1
+    TargetColNum=0
+    ColType=""
+    IsNullable=""
+    IsPKCol=""
+    TablePKIndex=0
 
-    if [ "$CurrIsPK" == "PK" ]; then
-        TablePKIndex=$FieldNum
-    fi
+    while read line
+    do
+        CurrColName=$(echo $line | cut -d: -f1)
+        CurrIsPK=$(echo $line | cut -d: -f4)
 
-    if [ "$CurrColName" == "$ColToEdit" ]; then
-        TargetColNum=$FieldNum
-        ColType=$(echo $line | cut -d: -f2)
-        IsNullable=$(echo $line | cut -d: -f3)
-        IsPKCol=$(echo $line | cut -d: -f4)
-    fi
-    ((FieldNum++))
-done < "$MetaFile"
-
-while true
-do
-    NewValue=$(zenity --entry --title="New Value" --text="Enter new value for ($ColToEdit) [$ColType]:")
-    
-    if [ $? -ne 0 ]; then
-        rm -f .search_res
-        exit 0
-    fi
-
-    if [ -z "$NewValue" ]; then
-        if [ "$IsNullable" == "notNull" ]; then
-            zenity --error --text="Invalid Input! ($ColToEdit) is not nullable."
-            continue
+        if [ "$CurrIsPK" == "PK" ]; then
+            TablePKIndex=$FieldNum
         fi
+
+        if [ "$CurrColName" == "$ColToEdit" ]; then
+            TargetColNum=$FieldNum
+            ColType=$(echo $line | cut -d: -f2)
+            IsNullable=$(echo $line | cut -d: -f3)
+            IsPKCol=$(echo $line | cut -d: -f4)
+        fi
+        ((FieldNum++))
+    done < "$MetaFile"
+
+    while true
+    do
+        NewValue=$(zenity --entry --title="New Value" --text="Enter new value for ($ColToEdit) [$ColType]:")
+
+        if [ $? -ne 0 ]; then
+            rm -f .search_res
+            exit 0
+        fi
+
+        if [ -z "$NewValue" ]; then
+            if [ "$IsNullable" == "notNull" ]; then
+                zenity --error --text="Invalid Input! ($ColToEdit) is not nullable."
+                continue
+            fi
+            break
+        fi
+
+        if [ "$ColType" == "Integer" ]; then
+            if ! [[ "$NewValue" =~ ^[0-9]+$ ]]; then
+                zenity --error --text="Invalid Input! ($ColToEdit) must be an Integer."
+                continue
+            fi
+        fi
+
+        if [ "$IsPKCol" == "PK" ]; then
+            if grep -q "^$NewValue," "$TableFile"; then
+                zenity --error --text="Primary Key Constraint Violated! Value '$NewValue' already exists."
+                continue
+            fi
+        fi
+
         break
-    fi
-    
-    if [ "$ColType" == "Integer" ]; then
-        if ! [[ "$NewValue" =~ ^[0-9]+$ ]]; then
-            zenity --error --text="Invalid Input! ($ColToEdit) must be an Integer."
-            continue 
-        fi
-    fi
+    done
 
-    if [ "$IsPKCol" == "PK" ]; then
-        if grep -q "^$NewValue," "$TableFile"; then
-            zenity --error --text="Primary Key Constraint Violated! Value '$NewValue' already exists."
-            continue
-        fi
-    fi
-
-    break
-done
-
-awk -F, -v col="$TableFilePKIndex" '{print $col}' .search_res | while read -r RowPK
-do
-    awk -F, -v pkIdx="$TablePKIndex" -v targetIdx="$TargetColNum" -v searchPK="$RowPK" -v newVal="$NewValue" '
-    BEGIN {OFS=","}
-    {
-        if ($pkIdx == searchPK) {
-            $targetIdx = newVal
+    awk -F, -v col="$TablePKIndex" '{print $col}' .search_res | while read -r RowPK
+    do
+        awk -F, -v pkIdx="$TablePKIndex" -v targetIdx="$TargetColNum" -v searchPK="$RowPK" -v newVal="$NewValue" '
+        BEGIN {OFS=","}
+        {
+            if ($pkIdx == searchPK) {
+                $targetIdx = newVal
+            }
+            print
         }
-        print $0
-    }
-    ' "$TableFile" > "$TableFile.temp"
-    
-    mv "$TableFile.temp" "$TableFile"
-done
+        ' "$TableFile" > "$TableFile.tmp"
+
+        mv "$TableFile.tmp" "$TableFile"
+    done
+
+done <<< "$ColsToEdit"
 
 Counter=$(wc -l < .search_res)
 rm -f .search_res
 
 zenity --info --text="$Counter rows updated successfully!"
+
